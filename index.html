@@ -6,6 +6,8 @@
   <title>BerryTube</title>
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <!-- Load libcurl for Wisp support -->
+  <script src="https://cdn.jsdelivr.net/npm/@mercuryworkshop/libcurl.js@0.4.0/dist/libcurl.js"></script>
 </head>
 <body>
   <header class="header">
@@ -17,21 +19,17 @@
   </header>
 
   <main>
-    <!-- Search Results View -->
     <section id="search-view" class="view active">
       <div id="video-grid" class="video-grid">
         <p class="hint">Search for something to start watching.</p>
       </div>
     </section>
 
-    <!-- Watch View -->
     <section id="watch-view" class="view">
       <button class="back-btn" onclick="showSearch()">← Back to search</button>
-      
       <div class="player-container">
         <video id="video-player" controls autoplay playsinline></video>
       </div>
-
       <div class="video-info">
         <h1 id="video-title">Loading...</h1>
         <div class="video-meta">
@@ -41,7 +39,6 @@
           <span id="video-dislikes">👎 0</span>
         </div>
       </div>
-
       <div class="comments-section">
         <h3>Comments</h3>
         <div id="comments-list"></div>
