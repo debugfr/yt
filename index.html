@@ -3,32 +3,53 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Browser - BlueberryUB</title>
+  <title>BerryTube</title>
   <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
 <body>
-  <!-- Loading Screen -->
-  <div id="loading-screen">
-    <div class="spinner"></div>
-    <h2 id="loading-text">Fetching backend...</h2>
-  </div>
+  <header class="header">
+    <h1 class="logo" onclick="showSearch()">BerryTube</h1>
+    <form id="search-form" class="search-bar">
+      <input id="search-input" type="search" placeholder="Search YouTube without ads..." required />
+      <button type="submit">Search</button>
+    </form>
+  </header>
 
-  <main class="browser-app" id="browser-app" style="display:none;">
-    <div class="address-toolbar">
-      <button id="back-button">←</button>
-      <button id="forward-button">→</button>
-      <button id="reload-button">↻</button>
-      <form id="address-form" class="omnibox">
-        <input id="address-input" type="text" placeholder="Search or enter URL..." required />
-      </form>
-    </div>
-    <div class="browser-stage">
-      <iframe id="site-frame" class="site-frame"></iframe>
-    </div>
+  <main>
+    <!-- Search Results View -->
+    <section id="search-view" class="view active">
+      <div id="video-grid" class="video-grid">
+        <p class="hint">Search for something to start watching.</p>
+      </div>
+    </section>
+
+    <!-- Watch View -->
+    <section id="watch-view" class="view">
+      <button class="back-btn" onclick="showSearch()">← Back to search</button>
+      
+      <div class="player-container">
+        <video id="video-player" controls autoplay playsinline></video>
+      </div>
+
+      <div class="video-info">
+        <h1 id="video-title">Loading...</h1>
+        <div class="video-meta">
+          <strong id="channel-name">...</strong>
+          <span id="video-views">0 views</span>
+          <span id="video-likes">👍 0</span>
+          <span id="video-dislikes">👎 0</span>
+        </div>
+      </div>
+
+      <div class="comments-section">
+        <h3>Comments</h3>
+        <div id="comments-list"></div>
+        <button id="load-more-comments" class="load-more" hidden>Load more comments</button>
+      </div>
+    </section>
   </main>
 
-  <!-- Scramjet Core Files (You must download these, see instructions below) -->
-  <script src="vendor/scramjet.all.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
