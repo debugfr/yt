@@ -6,43 +6,69 @@
   <title>BerryTube</title>
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  <!-- Load libcurl for Wisp support -->
   <script src="https://cdn.jsdelivr.net/npm/@mercuryworkshop/libcurl.js@0.4.0/dist/libcurl.js"></script>
 </head>
 <body>
   <header class="header">
-    <h1 class="logo" onclick="showSearch()">BerryTube</h1>
+    <div class="header-left">
+      <h1 class="logo" onclick="showSearch()">
+        <span class="logo-icon">🫐</span> BerryTube
+      </h1>
+    </div>
     <form id="search-form" class="search-bar">
       <input id="search-input" type="search" placeholder="Search YouTube without ads..." required />
-      <button type="submit">Search</button>
+      <button type="submit" aria-label="Search">
+        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      </button>
     </form>
+    <div class="header-right"></div>
   </header>
 
-  <main>
+  <main class="main-content">
+    <!-- SEARCH VIEW -->
     <section id="search-view" class="view active">
       <div id="video-grid" class="video-grid">
-        <p class="hint">Search for something to start watching.</p>
+        <div class="empty-state">
+          <h2>Welcome to BerryTube</h2>
+          <p>Search for anything to start watching. No ads, no tracking.</p>
+        </div>
       </div>
     </section>
 
+    <!-- WATCH VIEW -->
     <section id="watch-view" class="view">
-      <button class="back-btn" onclick="showSearch()">← Back to search</button>
-      <div class="player-container">
-        <video id="video-player" controls autoplay playsinline></video>
-      </div>
-      <div class="video-info">
-        <h1 id="video-title">Loading...</h1>
-        <div class="video-meta">
-          <strong id="channel-name">...</strong>
-          <span id="video-views">0 views</span>
-          <span id="video-likes">👍 0</span>
-          <span id="video-dislikes">👎 0</span>
+      <button class="back-btn" onclick="showSearch()">
+        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        Back to search
+      </button>
+      
+      <div class="watch-layout">
+        <div class="primary-col">
+          <div class="player-container">
+            <video id="video-player" controls autoplay playsinline></video>
+          </div>
+          
+          <div class="video-info">
+            <h1 id="video-title">Loading...</h1>
+            <div class="video-meta-bar">
+              <div class="channel-info">
+                <div class="channel-avatar"></div>
+                <strong id="channel-name">...</strong>
+              </div>
+              <div class="video-stats">
+                <span id="video-views">0 views</span>
+                <span class="stat-pill" id="video-likes">👍 0</span>
+                <span class="stat-pill" id="video-dislikes">👎 0</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="comments-section">
+            <h3 id="comments-count">Comments</h3>
+            <div id="comments-list" class="comments-list"></div>
+            <button id="load-more-comments" class="load-more-btn" hidden>Load more comments</button>
+          </div>
         </div>
-      </div>
-      <div class="comments-section">
-        <h3>Comments</h3>
-        <div id="comments-list"></div>
-        <button id="load-more-comments" class="load-more" hidden>Load more comments</button>
       </div>
     </section>
   </main>
