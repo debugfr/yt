@@ -12,15 +12,11 @@ const WISP_SERVERS = [
   "wss://i-ready.math.bostoncareercounselor.com/wisp/",
   "wss://glseries.net/wisp/",
   "wss://wisp.rhw.one/wisp/",
-  "wss://seminar.drama.english.assignment.literature.homebrewer.org/wisp/",
-  "wss://i-ready.math.loaf.systems/wisp/",
-  "wss://wisp.mercurywork.shop/wisp/",
-  "wss://theavancehotel.com/fairs/",
-  "wss://science-340154168.b-cdn.net/api/",
-  "wss://wispserver.dev/wisp/",
-  "wss://nebulaservices.org/wisp/",
-  "wss://anura.pro/"
+  "wss://seminar.drama.english.assignment.literature.homebrewer.org/wisp/"
 ];
+
+let currentApiInstance = null;
+let isWispInitialized = false;
 
 const searchForm = document.getElementById("search-form");
 const searchInput = document.getElementById("search-input");
@@ -28,14 +24,7 @@ const searchView = document.getElementById("search-view");
 const watchView = document.getElementById("watch-view");
 const videoGrid = document.getElementById("video-grid");
 const videoPlayer = document.getElementById("video-player");
-const commentsList = document.getElementById("comments-list");
-const loadMoreBtn = document.getElementById("load-more-comments");
 
-let currentNextPage = null;
-let currentVideoId = null;
-let activeApiInstance = null;
-
-// UTILS
 function formatNumber(num) {
   if (!num) return "0";
   if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
@@ -57,68 +46,72 @@ function showSearch() {
   searchView.classList.add("active");
 }
 
-// THE CORE LOGIC: Fetch Directly -> Fallback to Wisp
+// THE FIXED WISP LOGIC
 async function fetchPiped(endpoint) {
-  // 1. Try standard fetch (Fastest)
-  const instancesToTry = activeApiInstance ? [activeApiInstance, ...PIPED_INSTANCES] : PIPED_INSTANCES;
-  
+  // 1. Try direct fetch
+  const instancesToTry = currentApiInstance ? [currentApiInstance, ...PIPED_INSTANCES] : PIPED_INSTANCES;
   for (const instance of instancesToTry) {
     try {
       const res = await fetch(`${instance}${endpoint}`);
       if (!res.ok) throw new Error();
-      activeApiInstance = instance; // Remember the working one
+      currentApiInstance = instance;
       return await res.json();
-    } catch (e) {} // Silent fail, try next
+    } catch (e) {}
   }
 
-  // 2. School blocked it? Route through Wisp
+  // 2. Direct blocked. Use Wisp.
   console.warn("Direct API blocked. Switching to Wisp proxy...");
-  
-  if (typeof libcurl === "undefined") {
-    throw new Error("libcurl not loaded");
-  }
+  if (typeof libcurl === "undefined") throw new Error("libcurl not loaded");
 
-  for (const wisp of WISP_SERVERS) {
-    try {
-      await libcurl.setWispUrl(wisp);
-      for (const instance of PIPED_INSTANCES) {
-        try {
-          const res = await libcurl.fetch(`${instance}${endpoint}`);
-          if (!res.ok) throw new Error();
-          activeApiInstance = instance;
-          return await res.json();
-        } catch (e) {}
-      }
-    } catch (e) {
-      console.warn(`Wisp ${wisp} failed.`);
+  try {
+    if (!isWispInitialized) {
+      await libcurl.load_wasm(); // Crucial: Load the WASM binary
+      isWispInitialized = true;
     }
+
+    for (const wisp of WISP_SERVERS) {
+      try {
+        // Correct function name is set_wisp_url
+        await libcurl.set_wisp_url(wisp);
+        
+        for (const instance of PIPED_INSTANCES) {
+          try {
+            const res = await libcurl.fetch(`${instance}${endpoint}`);
+            if (!res.ok) throw new Error();
+            currentApiInstance = instance;
+            return await res.json();
+          } catch (e) {}
+        }
+      } catch (e) {
+        console.warn(`Wisp ${wisp} failed to connect.`);
+      }
+    }
+  } catch (err) {
+    console.error("Wisp initialization failed", err);
   }
   
-  throw new Error("All direct and Wisp requests failed.");
+  throw new Error("All APIs and Wisp proxies are blocked.");
 }
 
-// Search Logic
 searchForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const query = searchInput.value.trim();
   if (!query) return;
 
-  videoGrid.innerHTML = "<div class='empty-state'><h2>Searching...</h2></div>";
+  videoGrid.innerHTML = "<h2>Searching...</h2>";
   showSearch();
 
   try {
     const data = await fetchPiped(`/search?q=${encodeURIComponent(query)}&filter=videos`);
-    
     videoGrid.innerHTML = "";
     if (!data.items || data.items.length === 0) {
-      videoGrid.innerHTML = "<div class='empty-state'><h2>No results found.</h2></div>";
+      videoGrid.innerHTML = "<h2>No results found.</h2>";
       return;
     }
 
     data.items.forEach(item => {
       if (!item.url) return;
       const videoId = item.url.replace("/watch?v=", "");
-      
       const card = document.createElement("div");
       card.className = "video-card";
       card.innerHTML = `
@@ -126,46 +119,42 @@ searchForm.addEventListener("submit", async (e) => {
           <img src="${item.thumbnail}" loading="lazy" />
           <span class="duration">${formatDuration(item.duration)}</span>
         </div>
-        <div class="info">
-          <h3>${item.title}</h3>
-          <p>${item.uploaderName}</p>
-          <p>${formatNumber(item.views)} views</p>
+        <div class="info-row">
+          <div class="info-avatar"></div>
+          <div class="info-text">
+            <h3>${item.title}</h3>
+            <p>${item.uploaderName}</p>
+            <p>${formatNumber(item.views)} views • ${item.uploadedDate}</p>
+          </div>
         </div>
       `;
       card.addEventListener("click", () => loadVideo(videoId));
       videoGrid.appendChild(card);
     });
   } catch (err) {
-    videoGrid.innerHTML = "<div class='empty-state'><h2>Error searching.</h2><p>All APIs and Wisp proxies are blocked.</p></div>";
+    videoGrid.innerHTML = `<h2>Error searching.</h2><p>${err.message}</p>`;
   }
 });
 
-// Video Playback Logic
 async function loadVideo(videoId) {
-  currentVideoId = videoId;
   searchView.classList.remove("active");
   watchView.classList.add("active");
   window.scrollTo(0, 0);
 
   videoPlayer.src = "";
   document.getElementById("video-title").textContent = "Loading...";
-  document.getElementById("channel-name").textContent = "...";
-  document.getElementById("video-views").textContent = "0 views";
-  document.getElementById("video-likes").textContent = "👍 0";
-  document.getElementById("video-dislikes").textContent = "👎 0";
-  commentsList.innerHTML = "<p style='color:var(--text-secondary)'>Loading comments...</p>";
-  loadMoreBtn.hidden = true;
-
+  
   try {
     const data = await fetchPiped(`/streams/${videoId}`);
-
+    
     document.getElementById("video-title").textContent = data.title;
     document.getElementById("channel-name").textContent = data.uploader;
+    document.getElementById("channel-subs").textContent = `${formatNumber(data.uploaderSubscriberCount)} subscribers`;
     document.getElementById("video-views").textContent = `${formatNumber(data.views)} views`;
-    document.getElementById("video-likes").textContent = `👍 ${formatNumber(data.likes)}`;
-    document.getElementById("video-dislikes").textContent = `👎 ${formatNumber(data.dislikes)}`;
+    document.getElementById("video-likes").innerHTML = `<svg viewBox="0 0 24 24"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"></path></svg> ${formatNumber(data.likes)}`;
+    document.getElementById("video-dislikes").innerHTML = `<svg viewBox="0 0 24 24"><path d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14.73v2c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17.79.44 1.06L9.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z"></path></svg> ${formatNumber(data.dislikes)}`;
+    document.getElementById("video-desc").textContent = data.description || "No description provided.";
 
-    // Handle Livestream vs Normal Video
     if (data.livestream && data.hls) {
       if (Hls.isSupported()) {
         const hls = new Hls();
@@ -175,7 +164,6 @@ async function loadVideo(videoId) {
         videoPlayer.src = data.hls;
       }
     } else {
-      // Use Piped's proxyUrl to bypass YouTube IP locks and school filters
       videoPlayer.src = data.proxyUrl || data.videoStreams[0]?.url;
     }
 
@@ -185,16 +173,16 @@ async function loadVideo(videoId) {
   }
 }
 
-// Comments Logic
-async function loadComments(videoId, nextpage = null) {
+async function loadComments(videoId) {
+  const list = document.getElementById("comments-list");
+  list.innerHTML = "<p>Loading comments...</p>";
   try {
-    const endpoint = `/comments/${videoId}${nextpage ? `?nextpage=${encodeURIComponent(nextpage)}` : ""}`;
-    const data = await fetchPiped(endpoint);
-
-    if (!nextpage) commentsList.innerHTML = "";
-
+    const data = await fetchPiped(`/comments/${videoId}`);
+    document.getElementById("comments-count").textContent = `${formatNumber(data.commentCount)} Comments`;
+    list.innerHTML = "";
+    
     if (data.comments && data.comments.length > 0) {
-      data.comments.forEach(comment => {
+      data.comments.slice(0, 20).forEach(comment => {
         const el = document.createElement("div");
         el.className = "comment";
         el.innerHTML = `
@@ -207,19 +195,12 @@ async function loadComments(videoId, nextpage = null) {
             <p>${comment.commentText}</p>
           </div>
         `;
-        commentsList.appendChild(el);
+        list.appendChild(el);
       });
-    } else if (!nextpage) {
-      commentsList.innerHTML = "<p style='color:var(--text-secondary)'>No comments found.</p>";
+    } else {
+      list.innerHTML = "<p>No comments found.</p>";
     }
-
-    currentNextPage = data.nextpage;
-    loadMoreBtn.hidden = !currentNextPage;
   } catch (err) {
-    commentsList.innerHTML = "<p style='color:var(--text-secondary)'>Error loading comments.</p>";
+    list.innerHTML = "<p>Error loading comments.</p>";
   }
 }
-
-loadMoreBtn.addEventListener("click", () => {
-  if (currentNextPage) loadComments(currentVideoId, currentNextPage);
-});
