@@ -1,1 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Browser - BlueberryUB</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Loading Screen -->
+  <div id="loading-screen">
+    <div class="spinner"></div>
+    <h2 id="loading-text">Fetching backend...</h2>
+  </div>
 
+  <main class="browser-app" id="browser-app" style="display:none;">
+    <div class="address-toolbar">
+      <button id="back-button">←</button>
+      <button id="forward-button">→</button>
+      <button id="reload-button">↻</button>
+      <form id="address-form" class="omnibox">
+        <input id="address-input" type="text" placeholder="Search or enter URL..." required />
+      </form>
+    </div>
+    <div class="browser-stage">
+      <iframe id="site-frame" class="site-frame"></iframe>
+    </div>
+  </main>
+
+  <!-- Scramjet Core Files (You must download these, see instructions below) -->
+  <script src="vendor/scramjet.all.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
